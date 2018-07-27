@@ -6,7 +6,7 @@ import java.util.Map;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 
-public class DripWebookEvent {
+public class DripWebhookEvent {
 	
 	public static class Data {
 		@JsonProperty("account_id") public String accountId;

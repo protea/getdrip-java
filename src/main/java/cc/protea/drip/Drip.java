@@ -15,9 +15,13 @@ import cc.protea.drip.model.DripOrder;
 import cc.protea.drip.model.DripRefund;
 import cc.protea.drip.model.DripSubscriber;
 import cc.protea.drip.model.DripUser;
+import cc.protea.drip.model.DripWebhook;
+import cc.protea.drip.model.DripWorkflow;
+import cc.protea.drip.model.DripWorkflowTrigger;
 import cc.protea.drip.responses.DripAccountsResponse;
 import cc.protea.drip.responses.DripBroadcastResponse;
 import cc.protea.drip.responses.DripCampaignResponse;
+import cc.protea.drip.responses.DripCampaignSubscriptionResponse;
 import cc.protea.drip.responses.DripConversionResponse;
 import cc.protea.drip.responses.DripCustomFieldsResponse;
 import cc.protea.drip.responses.DripEventActionsResponse;
@@ -26,7 +30,11 @@ import cc.protea.drip.responses.DripFormResponse;
 import cc.protea.drip.responses.DripOrderResponse;
 import cc.protea.drip.responses.DripResponse;
 import cc.protea.drip.responses.DripSubscriberResponse;
+import cc.protea.drip.responses.DripTagsResponse;
 import cc.protea.drip.responses.DripUsersResponse;
+import cc.protea.drip.responses.DripWebhookResponse;
+import cc.protea.drip.responses.DripWorkflowResponse;
+import cc.protea.drip.responses.DripWorkflowTriggerResponse;
 
 public class Drip {
 
@@ -75,52 +83,27 @@ public class Drip {
 		}
 		
 	}
-
 	
 	////////////////////////////////////////////////////////////////////////////////////////////////////
 	// Batching
 	
-	public List<DripResponse> batchSubcribers(List<DripSubscriber> subscribers) {
-		return batch(subscribers, "/" + accountId.trim() + "/subscribers/batches");
-	}
-
-	public List<DripResponse> batchUnsubscribes(List<String> unsubscribes) {
-		if (unsubscribes == null) {
-			return null;
-		}
-		List<Map<String, String>> request = new ArrayList<Map<String, String>>();
-		for (String email : unsubscribes) {
-			if (email == null) {
-				continue;
-			}
-			Map<String, String> map = new HashMap<String, String>();
-			map.put("email", email.trim());
-			request.add(map);
-		}
-		return batch(request, "/" + accountId.trim() + "/unsubscribes/batches");
-	}
-
-	public List<DripResponse> batchOrders(List<DripOrder> orders) {
-		return batch(orders, "/" + accountId.trim() + "/orders/batches");
-	}
-
-	List<DripResponse> batch(List<? extends Object> dripObjects, String url) {
+	<T extends DripResponse> List<T> batch(List<? extends Object> dripObjects, String url, final Class<T> type) {
 		if (dripObjects == null || accountId == null || accountId.trim().length() == 0) {
 			return null;
 		}
-		List<DripResponse> responses = new ArrayList<DripResponse>();
+		List<T> responses = new ArrayList<T>();
 		DripBatchRequest dbr = new DripBatchRequest();
 		List<Object> batch = new ArrayList<Object>();
 		dbr.batches = batch;
 		for (Object object : dripObjects) {
 			batch.add(object);
 			if (batch.size() == 1000) {
-				responses.add(util.post(apiKey, url, dbr, DripResponse.class));
+				responses.add(util.post(apiKey, url, dbr, type));
 				batch.clear();
 			}
 		}
 		if (! batch.isEmpty()) {
-			responses.add(util.post(apiKey, url, dbr, DripResponse.class));
+			responses.add(util.post(apiKey, url, dbr, type));
 		}
 		return responses;
 	}
@@ -283,8 +266,8 @@ public class Drip {
 			return util.post(apiKey, url, event, DripResponse.class);
 		}
 		
-		public List<DripResponse> record(List<DripEvent> events) {
-			return batch(events, "/" + accountId.trim() + "/events/batches");
+		public List<DripEventResponse> record(List<DripEvent> events) {
+			return batch(events, "/" + accountId.trim() + "/events/batches", DripEventResponse.class);
 		}
 
 	}
@@ -336,15 +319,15 @@ public class Drip {
 			return util.post(apiKey, url, order, DripResponse.class);
 		}
 		
+		public List<DripOrderResponse> record(List<DripOrder> orders) {
+			return batch(orders, "/" + accountId.trim() + "/orders/batches", DripOrderResponse.class);
+		}
+
 		public DripResponse refund(DripRefund refund) {
 			String url = util.buildUrl(accountId, "/refunds");
 			return util.post(apiKey, url, refund, DripResponse.class);
 		}
 		
-		public List<DripResponse> record(List<DripOrder> orders) {
-			return batch(orders, "/" + accountId.trim() + "/orders/batches");
-		}
-
 	}
 	
 	////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -352,9 +335,232 @@ public class Drip {
 	
 	class Subscribers {
 		
-		public void listCampaignSubscriptions(String subscriberId, DripPagination pagination) {
-			// http://developer.drip.com/#list-all-of-a-subscriber-39-s-campaign-subscriptions
+
+		public DripCampaignSubscriptionResponse listCampaignSubscriptions(String subscriberId) {
+			return listCampaignSubscriptions(subscriberId, null);
 		}
+
+		public DripCampaignSubscriptionResponse listCampaignSubscriptions(String subscriberId, DripPagination pagination) {
+			String url = util.buildUrl(accountId, "/subscribers/" + subscriberId + "/campaign_subscriptions", pagination);
+			return util.get(apiKey, url, DripCampaignSubscriptionResponse.class);
+		}
+		
+		public DripSubscriberResponse removeCampaignSubscription(String subscriberId, String campaignId) {
+			String url = util.buildUrl(accountId, "/subscribers/" + subscriberId + "/remove" + "?campaignId=" + campaignId);
+			return util.post(apiKey, url, null, DripSubscriberResponse.class);
+		}
+
+		public DripSubscriberResponse removeAllCampaignSubscriptions(String subscriberId) {
+			String url = util.buildUrl(accountId, "/subscribers/" + subscriberId + "/remove");
+			return util.post(apiKey, url, null, DripSubscriberResponse.class);
+		}
+
+		public DripSubscriberResponse unsubscribeFromAllMailings(String subscriberId) {
+			String url = util.buildUrl(accountId, "/subscribers/" + subscriberId + "/unsubscribe_all");
+			return util.post(apiKey, url, null, DripSubscriberResponse.class);
+		}
+
+		public DripSubscriberResponse delete(String subscriberId) {
+			String url = util.buildUrl(accountId, "/subscribers/" + subscriberId);
+			return util.delete(apiKey, url, null, DripSubscriberResponse.class);
+		}
+
+		public DripSubscriberResponse record(DripSubscriber subscriber) {
+			String url = util.buildUrl(accountId, "/subscribers");
+			return util.post(apiKey, url, subscriber, DripSubscriberResponse.class);
+		}
+		
+		public List<DripSubscriberResponse> record(List<DripSubscriber> subscribers) {
+			return batch(subscribers, "/" + accountId.trim() + "/subscribers/batches", DripSubscriberResponse.class);
+		}
+
+		public DripSubscriberResponse list() {
+			return list(null);
+		}
+		
+		public DripSubscriberResponse list(DripSubscriberRequest pagination) {
+			String url = util.buildUrl(accountId, "/subscribers", pagination);
+			return util.get(apiKey, url, DripSubscriberResponse.class);
+		}
+		
+		public DripSubscriber get(String subscriberId) {
+			String url = util.buildUrl(accountId, "/subscribers" + subscriberId);
+			DripSubscriberResponse response = util.get(apiKey, url, DripSubscriberResponse.class);
+			return response.subscribers == null || response.subscribers.isEmpty() ? null : response.subscribers.get(0);
+		}
+		
+		public List<DripResponse> unsubscribe(List<String> unsubscribes) {
+			if (unsubscribes == null) {
+				return null;
+			}
+			List<Map<String, String>> request = new ArrayList<Map<String, String>>();
+			for (String email : unsubscribes) {
+				if (email == null) {
+					continue;
+				}
+				Map<String, String> map = new HashMap<String, String>();
+				map.put("email", email.trim());
+				request.add(map);
+			}
+			return batch(request, "/" + accountId.trim() + "/unsubscribes/batches", DripResponse.class);
+		}
+
+		public DripResponse addTag(String subscriberEmail, String tag) {
+			String url = util.buildUrl(accountId, "/tags");
+			DripTagRequest request = new DripTagRequest(subscriberEmail, tag);
+			return util.post(apiKey, url, request, DripResponse.class);
+		}
+		
+		public DripResponse removeTag(String subscriberEmail, String tag) {
+			String url = util.buildUrl(accountId, "/subscribers/" + subscriberEmail + "/tags/" + tag);
+			return util.delete(apiKey, url, null, DripResponse.class);
+		}
+		
+		public DripSubscriberResponse addToWorkflow(DripSubscriber subscriber, String workflowId) {
+			String url = util.buildUrl(accountId, "/workflows/" + workflowId + "/subscribers");
+			return util.post(apiKey, url, subscriber, DripSubscriberResponse.class);
+		}
+		
+		public DripResponse removeFromWorkflow(DripSubscriber subscriber, String workflowId) {
+			if (subscriber == null) {
+				return null;
+			}
+			return removeFromWorkflow(DripUtils.isEmpty(subscriber.id) ? subscriber.email : subscriber.id, workflowId);
+		}
+
+		public DripResponse removeFromWorkflow(String subscriberId, String workflowId) {
+			String url = util.buildUrl(accountId, "/workflows/" + workflowId + "/subscribers/" + subscriberId);
+			return util.delete(apiKey, url, null, DripResponse.class);
+		}
+
+
+		
+	}
+
+	////////////////////////////////////////////////////////////////////////////////////////////////////
+	// Tags
+	
+	public Tags tags = new Tags();
+	
+	class Tags {
+	
+		public DripTagsResponse list() {
+			String url = util.buildUrl(accountId, "/tags");
+			return util.get(apiKey, url, DripTagsResponse.class);
+		}
+		
+		public DripResponse addSubscriber(String tag, String subscriberEmail) {
+			String url = util.buildUrl(accountId, "/tags");
+			DripTagRequest request = new DripTagRequest(subscriberEmail, tag);
+			return util.post(apiKey, url, request, DripResponse.class);
+		}
+		
+		public DripResponse removeSubscriber(String tag, String subscriberEmail) {
+			String url = util.buildUrl(accountId, "/subscribers/" + subscriberEmail + "/tags/" + tag);
+			return util.delete(apiKey, url, null, DripResponse.class);
+		}
+				
 	}
 	
+	////////////////////////////////////////////////////////////////////////////////////////////////////
+	// Users
+	
+	public Users users = new Users();
+	
+	class Users {
+		
+		public DripUser current() {
+			DripUsersResponse response = util.get(apiKey, "/user", DripUsersResponse.class);
+			return response.users == null || response.users.isEmpty() ? null : response.users.get(0); 
+		}
+
+	}
+	
+	////////////////////////////////////////////////////////////////////////////////////////////////////
+	// Webhooks
+	
+	public Webhooks webhooks = new Webhooks();
+	
+	class Webhooks {
+		
+		public DripWebhookResponse list() {
+			String url = util.buildUrl(accountId, "/webhooks");
+			return util.get(apiKey, url, DripWebhookResponse.class);
+		}
+		
+		public DripWebhookResponse create(DripWebhook webhook) {
+			String url = util.buildUrl(accountId, "/webhooks");
+			return util.post(apiKey, url, webhook, DripWebhookResponse.class);
+		}
+
+		public DripWebhook get(String webhookId) {
+			String url = util.buildUrl(accountId, "/webhooks/" + webhookId);
+			DripWebhookResponse response = util.get(apiKey, url, DripWebhookResponse.class);
+			return response == null || response.webhooks.isEmpty() ? null : response.webhooks.get(0);
+		}
+
+		public DripResponse delete(String webhookId) {
+			String url = util.buildUrl(accountId, "/webhooks/" + webhookId);
+			return util.delete(apiKey, url, null, DripResponse.class);
+		}
+
+	}
+	
+	////////////////////////////////////////////////////////////////////////////////////////////////////
+	// Workflows
+	
+	public Workflows workflows = new Workflows();
+	
+	class Workflows {
+		
+		public DripWorkflowResponse list() {
+			String url = util.buildUrl(accountId, "/workflows");
+			return util.get(apiKey, url, DripWorkflowResponse.class);
+		}
+		
+		public DripWorkflow get(String workflowId) {
+			String url = util.buildUrl(accountId, "/workflows/" + workflowId);
+			DripWorkflowResponse response = util.get(apiKey, url, DripWorkflowResponse.class);
+			return response == null || response.workflows.isEmpty() ? null : response.workflows.get(0);
+		}
+		
+		public DripResponse activate(String workflowId) {
+			String url = util.buildUrl(accountId, "/workflows/" + workflowId + "/activate");
+			return util.post(apiKey, url, null, DripResponse.class);
+		}
+
+		public DripResponse pause(String workflowId) {
+			String url = util.buildUrl(accountId, "/workflows/" + workflowId + "/pause");
+			return util.post(apiKey, url, null, DripResponse.class);
+		}
+		
+		public DripSubscriberResponse subscribe(String workflowId, DripSubscriber subscriber) {
+			String url = util.buildUrl(accountId, "/workflows/" + workflowId + "/subscribers");
+			return util.post(apiKey, url, subscriber, DripSubscriberResponse.class);
+		}
+
+		public DripResponse remove(String workflowId, String subscriberId) {
+			String url = util.buildUrl(accountId, "/workflows/" + workflowId + "/subscribers/" + subscriberId);
+			return util.delete(apiKey, url, null, DripResponse.class);
+		}
+
+		public DripWorkflowTriggerResponse listTriggers(String workflowId) {
+			String url = util.buildUrl(accountId, "/workflows/" + workflowId + "/triggers");
+			return util.get(apiKey, url, DripWorkflowTriggerResponse.class);
+		}
+		
+		public DripResponse createTrigger(String workflowId, DripWorkflowTrigger trigger) {
+			String url = util.buildUrl(accountId, "/workflows/" + workflowId + "/triggers");
+			return util.post(apiKey,  url,  trigger,  DripResponse.class);
+		}
+		
+		public DripResponse updateTrigger(String workflowId, DripWorkflowTrigger trigger) {
+			String url = util.buildUrl(accountId, "/workflows/" + workflowId + "/triggers/" + trigger.id);
+			return util.put(apiKey,  url,  trigger,  DripResponse.class);
+		}
+		
+
+	}
+	
+
 }
