@@ -71,7 +71,7 @@ public class Drip {
 	
 	public Accounts accounts = new Accounts();
 	
-	class Accounts {
+	public class Accounts {
 		
 		public DripAccountsResponse list() {
 			return util.get(apiKey, "/accounts", DripAccountsResponse.class);
@@ -113,7 +113,7 @@ public class Drip {
 	
 	public Broadcasts broadcasts = new Broadcasts();
 	
-	class Broadcasts {
+	public class Broadcasts {
 		
 		public DripBroadcastResponse list() {
 			return list(new DripBroadcastRequest());
@@ -140,7 +140,7 @@ public class Drip {
 	
 	public Campaigns campaigns = new Campaigns();
 	
-	class Campaigns {
+	public class Campaigns {
 		
 		public DripCampaignResponse list() {
 			return list(new DripPagination());
@@ -197,7 +197,7 @@ public class Drip {
 	
 	public Conversions conversions = new Conversions();
 	
-	class Conversions {
+	public class Conversions {
 	
 		public DripConversionResponse list() {
 			return list(null);
@@ -221,7 +221,7 @@ public class Drip {
 	
 	public CustomFields customFields = new CustomFields();
 	
-	class CustomFields {
+	public class CustomFields {
 	
 		public DripCustomFieldsResponse list() {
 			String url = util.buildUrl(accountId, "/custom_field_identifiers");
@@ -235,7 +235,7 @@ public class Drip {
 	
 	public Events events = new Events();
 	
-	class Events {
+	public class Events {
 	
 		public DripEventResponse list() {
 			return list(null);
@@ -277,7 +277,7 @@ public class Drip {
 	
 	public Forms forms = new Forms();
 	
-	class Forms {
+	public class Forms {
 	
 		public DripFormResponse list() {
 			String url = util.buildUrl(accountId, "/forms");
@@ -297,7 +297,7 @@ public class Drip {
 	
 	public Orders orders = new Orders();
 	
-	class Orders {
+	public class Orders {
 	
 		public DripOrderResponse list() {
 			return list(null);
@@ -333,9 +333,10 @@ public class Drip {
 	////////////////////////////////////////////////////////////////////////////////////////////////////
 	// Subscribers 
 	
-	class Subscribers {
+	public Subscribers subscribers = new Subscribers();
+	
+	public class Subscribers {
 		
-
 		public DripCampaignSubscriptionResponse listCampaignSubscriptions(String subscriberId) {
 			return listCampaignSubscriptions(subscriberId, null);
 		}
@@ -442,7 +443,7 @@ public class Drip {
 	
 	public Tags tags = new Tags();
 	
-	class Tags {
+	public class Tags {
 	
 		public DripTagsResponse list() {
 			String url = util.buildUrl(accountId, "/tags");
@@ -467,7 +468,7 @@ public class Drip {
 	
 	public Users users = new Users();
 	
-	class Users {
+	public class Users {
 		
 		public DripUser current() {
 			DripUsersResponse response = util.get(apiKey, "/user", DripUsersResponse.class);
@@ -481,7 +482,7 @@ public class Drip {
 	
 	public Webhooks webhooks = new Webhooks();
 	
-	class Webhooks {
+	public class Webhooks {
 		
 		public DripWebhookResponse list() {
 			String url = util.buildUrl(accountId, "/webhooks");
@@ -511,7 +512,7 @@ public class Drip {
 	
 	public Workflows workflows = new Workflows();
 	
-	class Workflows {
+	public class Workflows {
 		
 		public DripWorkflowResponse list() {
 			String url = util.buildUrl(accountId, "/workflows");
@@ -559,7 +560,6 @@ public class Drip {
 			return util.put(apiKey,  url,  trigger,  DripResponse.class);
 		}
 		
-
 	}
 	
 
