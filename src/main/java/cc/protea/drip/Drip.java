@@ -85,27 +85,45 @@ public class Drip {
 	}
 	
 	////////////////////////////////////////////////////////////////////////////////////////////////////
-	// Batching
-	
-	<T extends DripResponse> List<T> batch(List<? extends Object> dripObjects, String url, final Class<T> type) {
+	// Utilities
+
+
+	<REQ, RESPONSE extends DripResponse> List<RESPONSE> batch(List<REQ> dripObjects, String listName, String url, final Class<RESPONSE> type) {
+		
+		// public    List<Map< String, List<Object>>> batches = new ArrayList<Map<String, List<Object>>>();
+		// batches : [     {   listName: [ object, object, object, ... ] } ]
+		
 		if (dripObjects == null || accountId == null || accountId.trim().length() == 0) {
 			return null;
 		}
-		List<T> responses = new ArrayList<T>();
-		DripBatchRequest dbr = new DripBatchRequest();
-		List<Object> batch = new ArrayList<Object>();
-		dbr.batches = batch;
-		for (Object object : dripObjects) {
-			batch.add(object);
-			if (batch.size() == 1000) {
-				responses.add(util.post(apiKey, url, dbr, type));
-				batch.clear();
-			}
-		}
-		if (! batch.isEmpty()) {
+		
+		List<RESPONSE> responses = new ArrayList<RESPONSE>();
+		DripBatchRequest<REQ> dbr = new DripBatchRequest<REQ>();
+		
+		for (List<REQ> subList : split(dripObjects, 1000)) {
+			Map<String, List<REQ>> map = new HashMap<String, List<REQ>>();
+			map.put(listName, subList);
+			dbr.batches.add(map);
 			responses.add(util.post(apiKey, url, dbr, type));
 		}
+		
 		return responses;
+	}
+	
+	<T> List<List<T>> split(List<T> in, int size) {
+		List<List<T>> out = new ArrayList<List<T>>();
+		List<T> list = new ArrayList<T>(size);
+		for (T object : in) {
+			list.add(object);
+			if (list.size() == size) {
+				out.add(list);
+				list = new ArrayList<T>();
+			}
+		}
+		if (! list.isEmpty()) {
+			out.add(list);
+		}
+		return out;
 	}
 	
 	////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -190,6 +208,16 @@ public class Drip {
 			return util.post(apiKey, url, request, DripSubscriberResponse.class);
 		}
 		
+		public DripSubscriberResponse addSubscriber(String campaignId, String emailAddress) {
+			DripCampaignSubscribeRequest request = new DripCampaignSubscribeRequest();
+			request.email = emailAddress;
+			return addSubscriber(campaignId, request);
+		}
+		
+		public DripSubscriberResponse removeSubscriber(String campaignId, String emailAddress) {
+			return subscribers.removeCampaignSubscription(emailAddress, campaignId);
+		}
+		
 	}
 
 	////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -267,7 +295,7 @@ public class Drip {
 		}
 		
 		public List<DripEventResponse> record(List<DripEvent> events) {
-			return batch(events, "/" + accountId.trim() + "/events/batches", DripEventResponse.class);
+			return batch(events, "events", "/" + accountId.trim() + "/events/batches", DripEventResponse.class);
 		}
 
 	}
@@ -320,7 +348,7 @@ public class Drip {
 		}
 		
 		public List<DripOrderResponse> record(List<DripOrder> orders) {
-			return batch(orders, "/" + accountId.trim() + "/orders/batches", DripOrderResponse.class);
+			return batch(orders, "orders", "/" + accountId.trim() + "/orders/batches", DripOrderResponse.class);
 		}
 
 		public DripResponse refund(DripRefund refund) {
@@ -368,11 +396,15 @@ public class Drip {
 
 		public DripSubscriberResponse record(DripSubscriber subscriber) {
 			String url = util.buildUrl(accountId, "/subscribers");
-			return util.post(apiKey, url, subscriber, DripSubscriberResponse.class);
+			Map<String, List<DripSubscriber>> map = new HashMap<String, List<DripSubscriber>>();
+			List<DripSubscriber> list = new ArrayList<DripSubscriber>();
+			map.put("subscribers", list);
+			list.add(subscriber);
+			return util.post(apiKey, url, map, DripSubscriberResponse.class);
 		}
 		
 		public List<DripSubscriberResponse> record(List<DripSubscriber> subscribers) {
-			return batch(subscribers, "/" + accountId.trim() + "/subscribers/batches", DripSubscriberResponse.class);
+			return batch(subscribers, "subscribers", "/" + accountId.trim() + "/subscribers/batches", DripSubscriberResponse.class);
 		}
 
 		public DripSubscriberResponse list() {
@@ -403,7 +435,7 @@ public class Drip {
 				map.put("email", email.trim());
 				request.add(map);
 			}
-			return batch(request, "/" + accountId.trim() + "/unsubscribes/batches", DripResponse.class);
+			return batch(request, "unsubscribes", "/" + accountId.trim() + "/unsubscribes/batches", DripResponse.class);
 		}
 
 		public DripResponse addTag(String subscriberEmail, String tag) {
