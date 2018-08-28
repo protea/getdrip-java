@@ -204,8 +204,12 @@ public class Drip {
 		}
 		
 		public DripSubscriberResponse addSubscriber(String campaignId, DripCampaignSubscribeRequest request) {
+			Map<String, List<DripCampaignSubscribeRequest>> map = new HashMap<String, List<DripCampaignSubscribeRequest>>();
+			List<DripCampaignSubscribeRequest> list = new ArrayList<DripCampaignSubscribeRequest>();
+			list.add(request);
+			map.put("subscribers", list);
 			String url = util.buildUrl(accountId, "/campaigns/" + campaignId + "/subscribers");
-			return util.post(apiKey, url, request, DripSubscriberResponse.class);
+			return util.post(apiKey, url, map, DripSubscriberResponse.class);
 		}
 		
 		public DripSubscriberResponse addSubscriber(String campaignId, String emailAddress) {

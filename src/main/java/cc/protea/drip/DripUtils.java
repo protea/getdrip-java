@@ -160,6 +160,7 @@ class DripUtils {
 	void checkResponse(Response response) {
 		switch(response.getResponseCode()) {
 			case 200:
+			case 201:
 				break; // success
 			default:
 				throw new DripException(null, "" + response.getResponseCode(), response.getResponseMessage());
